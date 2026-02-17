@@ -1,0 +1,9 @@
+name: reference_resources
+runtime: dotnet
+description: on AWS, a secure api that exposes a simple dynanodb table using just post and get methods
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: https://www.pulumi.com/ai/api/project/5cc3b9dc-f16d-4caa-b16b-c7b0cb6b2ac0.zip
+  pulumi:disable-default-providers:
+    - aws
