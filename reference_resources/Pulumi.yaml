@@ -1,5 +1,9 @@
 name: reference_resources
-runtime: dotnet
+runtime:
+  name: nodejs
+  options:
+    nodeargs: "--loader ts-node/esm --no-warnings --experimental-specifier-resolution=node"
+    packagemanager: bun
 description: on AWS, a secure api that exposes a simple dynanodb table using just post and get methods
 config:
   pulumi:tags:
