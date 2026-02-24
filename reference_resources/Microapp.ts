@@ -11,19 +11,20 @@ export class Microapp extends pulumi.ComponentResource {
   private region: aws.Region;
   private integrations: aws.apigateway.Integration[] = [];
   private opts: pulumi.ComponentResourceOptions;
+  private table: aws.dynamodb.Table;
 
   constructor(name: string, args: MicroappArgs, opts: pulumi.ComponentResourceOptions) {
     super("sentify:demo:apiapp", name, args, opts);
     this.opts = opts;
     this.region = args.region;
 
-    const table = new aws.dynamodb.Table("Values", {
+    this.table = new aws.dynamodb.Table("Values", {
       attributes: [{ name: "id", type: "N" }],
       hashKey: "id",
       billingMode: "PAY_PER_REQUEST"
     }, { ...this.opts, parent: this });
 
-    const role = this.allowApiGatewayToAccess(table);
+    const role = this.allowApiGatewayToAccess(this.table);
     const api = this.createDemoApi(role);
 
     this.service = this.deployToApiGatewayService(api);
@@ -68,48 +69,113 @@ export class Microapp extends pulumi.ComponentResource {
       description: "Add and read values from a DynamoDB table"
     }, { ...this.opts, parent: this });
 
-    const app = new aws.apigateway.Resource("table", {
+    const table = new aws.apigateway.Resource("table", {
       restApi: api.id,
       parentId: api.rootResourceId,
-      pathPart: "table"
+      pathPart: "{id}"
     }, { ...this.opts, parent: this });
 
-    const addValuePath = new aws.apigateway.Method("add", {
+    const addValue = new aws.apigateway.Method("add", {
       restApi: api,
-      resourceId: app.id,
+      resourceId: table.id,
       authorization: "NONE",
       apiKeyRequired: false,
-      httpMethod: "POST"
-    }, { ...this.opts, parent: app });
+      httpMethod: "POST",
+      requestParameters: {
+        "method.request.path.id": true
+      }
+    }, { ...this.opts, parent: table });
     this.integrations.push(new aws.apigateway.Integration("add", {
       restApi: api.id,
-      resourceId: app.id,
+      resourceId: table.id,
       credentials: role.arn,
-      httpMethod: addValuePath.httpMethod,
+      httpMethod: addValue.httpMethod,
       type: "AWS",
       integrationHttpMethod: "POST",
-      uri: `arn:aws:apigateway:${this.region}:dynamodb:action/PutItem`
-    }, { ...this.opts, parent: addValuePath }));
+      uri: `arn:aws:apigateway:${this.region}:dynamodb:action/PutItem`,
+      requestTemplates: {
+        "application/json": pulumi.interpolate`{
+            "TableName": "${this.table.name}",
+            "Item": {
+                "id": { "N": "$input.params('id')" },
+                "value": { "S": "$input.params('content')" }
+            }
+        }`
+      },
+    }, { ...this.opts, parent: addValue }));
 
-    const getValuePath = new aws.apigateway.Method("get", {
+    const addSuccess = new aws.apigateway.MethodResponse("addsuccess", {
+      restApi: api.id,
+      resourceId: table.id,
+      httpMethod: addValue.httpMethod,
+      statusCode: "200"
+    }, { ...this.opts, parent: addValue });
+    new aws.apigateway.IntegrationResponse("add", {
+      restApi: api.id,
+      resourceId: table.id,
+      httpMethod: addValue.httpMethod,
+      statusCode: addSuccess.statusCode,
+      responseTemplates: {
+        "application/json": `#set($inputRoot = $input.path('$'))
+{"message": "Value set"}`
+      }
+    }, { ...this.opts, parent: addSuccess, dependsOn: this.integrations });
+
+    const getValue = new aws.apigateway.Method("get", {
       restApi: api,
-      resourceId: app.id,
+      resourceId: table.id,
       authorization: "NONE",
       apiKeyRequired: false,
-      httpMethod: "GET"
-    }, { ...this.opts, parent: app });
+      httpMethod: "GET",
+      requestParameters: {
+        "method.request.path.id": true
+      }
+    }, { ...this.opts, parent: table });
 
     // This ensures that Pulumi waits until all the integrations are deployed before deploying the API gateway.
     // Without this, running `pulumi up` in a new stack will fail initially (though it will succeed on re-upping).
     this.integrations.push(new aws.apigateway.Integration("get", {
       restApi: api.id,
-      resourceId: app.id,
+      resourceId: table.id,
       credentials: role.arn,
-      httpMethod: getValuePath.httpMethod,
+      httpMethod: getValue.httpMethod,
       type: "AWS",
       integrationHttpMethod: "POST",
-      uri: `arn:aws:apigateway:${this.region}:dynamodb:action/PutItem`
-    }, { ...this.opts, parent: getValuePath }));
+      uri: `arn:aws:apigateway:${this.region}:dynamodb:action/GetItem`,
+      requestTemplates: {
+        "application/json": pulumi.interpolate`{
+          "TableName": "${this.table.name}",
+          "Key": {
+            "id": { "N": "$input.params('id')" }
+          }
+        }`
+      }
+    }, { ...this.opts, parent: getValue }));
+
+    const getSuccess = new aws.apigateway.MethodResponse("getsuccess", {
+      restApi: api.id,
+      resourceId: table.id,
+      httpMethod: getValue.httpMethod,
+      statusCode: "200"
+    }, { ...this.opts, parent: getValue });
+    new aws.apigateway.IntegrationResponse("get", {
+      restApi: api.id,
+      resourceId: table.id,
+      httpMethod: getValue.httpMethod,
+      statusCode: getSuccess.statusCode,
+      responseTemplates: {
+        "application/json": `#set($inputRoot = $input.path('$'))
+#if($inputRoot.toString().contains("Item"))
+{
+  "id": "$inputRoot.Item.id.N",
+  "value": "$inputRoot.Item.value.S"
+}
+#else
+#set($context.responseOverride.status = 404)
+{"message": "Item not found"}
+#end`
+      }
+    }, { ...this.opts, parent: getSuccess, dependsOn: this.integrations });
 
     return api;
   }
