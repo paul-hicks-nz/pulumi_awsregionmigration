@@ -51,3 +51,13 @@ pulumi stack init one # Since this is experiment number one.
 Select Stacks, click Import, put the query from above in, and then select which resources to import.
 ```
 A challenge is to find and exclude "default" resources, like the default VPC, internet gateways, RDS parameter groups, and keys. The query can be quite complex, and I've got this far:
+
+## Experiment 2
+
+In the Pulumi app, go to Stacks, click Import, and build a suitable query. It should include _at least_ all the resources you want to import, but it may include more, because you'll be given checkboxes for each resource.
+I used robot-query "(anything in apigateway module or dynamodb module ) and stack:ap-southeast-2" which is the same as
+magnifyingglass-query "(stack:ap-southeast-2) AND (module:apigateway OR module:dynamodb)". THese give the same 9 resources I want to move.
+No idea where the integrations and mappings are though. Can't find those? (Confirmed not yet supported, Pulumi have been notified.)
+(Add in IAM stuff, missed that initially.)
+Go through the import wizard, build the code, put it in your project.
+Refactor before importing, and importantly, _remove all the importIds_! Because you'll be creating the resources in a new region :)

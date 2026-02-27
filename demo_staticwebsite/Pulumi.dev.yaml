@@ -1,0 +1,5 @@
+config:
+  aws:region: ap-southeast-2
+  demo_staticwebsite:errorDocument: error.html
+  demo_staticwebsite:indexDocument: index.html
+  demo_staticwebsite:path: ./www

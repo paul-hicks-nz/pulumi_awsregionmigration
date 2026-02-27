@@ -1,0 +1,9 @@
+name: demo_staticwebsite
+description: A C# program to deploy a static website on AWS
+runtime: dotnet
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: static-website-aws-csharp
+  pulumi:disable-default-providers:
+    - aws

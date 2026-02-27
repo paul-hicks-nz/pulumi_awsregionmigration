@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "demo_dynamoapi"
+		},
+		{
+			"path": "demo_staticwebsite"
+		},
+		{
+			"path": "../../pams/infrastructure"
+		}
+	],
+	"settings": {
+		"dotnet.preferCSharpExtension": false
+	}
+}

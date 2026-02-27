@@ -7,7 +7,7 @@ const provider = new aws.Provider("origregion", {
   profile: "admin-cms",
   defaultTags: {
     tags: {
-      moveto: region
+      moveto: aws.Region.APSoutheast4
     }
   }
 });
