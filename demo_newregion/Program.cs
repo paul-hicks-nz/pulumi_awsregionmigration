@@ -1,12 +1,10 @@
 using System.Collections.Generic;
-using System.Text.Json;
 using Pulumi;
-using Pulumi.Serialization;
 using Aws = Pulumi.Aws;
 
 /*
-Pulumi program that provisions an S3 bucket (with ownership controls, policy, and PAB) and a CloudFront distribution using an Origin Access Control.
-Refactor highlights: replaces cross-resource literals with typed outputs, clarifies variable/resource names, adds comments/spacing, and deduplicates literals.
+This Pulumi program provisions an S3 bucket (with ownership controls, policy, and PAB) and a CloudFront distribution using an Origin Access Control.
+Refactor: replaced cross-resource literals with typed outputs, improved variable/resource names, added concise comments/spacing, and deduplicated literals.
 */
 
 return await Deployment.RunAsync(() =>
@@ -200,7 +198,8 @@ return await Deployment.RunAsync(() =>
                 },
                 Version = "2012-10-17",
             };
-            //return JsonS// policy.ToJson();
+
+            return policy.ToJson();
         }),
     }, new CustomResourceOptions
     {
