@@ -13,14 +13,13 @@ namespace demo_newregion
 {
     class Alpha
     {
-        public static IDictionary<string, object?> SstackFunc()
+        public static IDictionary<string, object?> StackFunc()
 
         {    // Shared literals
             const string tagMigrateToKey = "MigrateTo";
             const string tagMigrateToValue = "ap-southeast-6";
             const string defaultRootObject = "index.html";
             const int cacheTtl = 600;
-            const string bucketNameLiteral = "demo-9cc426a";
 
             // Providers
             var awsGlobal = new Aws.Provider("aws_sentify_demo_global", new()
@@ -36,8 +35,6 @@ namespace demo_newregion
             // S3 bucket
             var s3Bucket = new Aws.S3.Bucket("demo-9cc426a", new()
             {
-                BucketName = bucketNameLiteral,
-                RequestPayer = "BucketOwner",
                 ServerSideEncryptionConfiguration = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationArgs
                 {
                     Rule = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationRuleArgs
@@ -55,7 +52,6 @@ namespace demo_newregion
             }, new CustomResourceOptions
             {
                 Provider = awsApSoutheast2,
-                ImportId = "demo-9cc426a",
             });
 
             // S3 bucket ownership controls
@@ -69,20 +65,17 @@ namespace demo_newregion
             }, new CustomResourceOptions
             {
                 Provider = awsApSoutheast2,
-                ImportId = "demo-9cc426a",
             });
 
             // Origin Access Control for CloudFront -> S3
             var originAccessControl = new Aws.CloudFront.OriginAccessControl("E2OS23KWF95585", new()
             {
-                Name = "demo-e10cc0e",
                 OriginAccessControlOriginType = "s3",
                 SigningBehavior = "always",
                 SigningProtocol = "sigv4",
             }, new CustomResourceOptions
             {
                 Provider = awsGlobal,
-                ImportId = "E2OS23KWF95585",
             });
 
             // Common S3 identifiers
@@ -168,7 +161,6 @@ namespace demo_newregion
             }, new CustomResourceOptions
             {
                 Provider = awsGlobal,
-                ImportId = "E1RNY9HPGY8YPZ",
             });
 
             // S3 bucket policy allowing CloudFront to GetObject (scoped to distribution ARN)
@@ -204,12 +196,11 @@ namespace demo_newregion
                         },
                         Version = "2012-10-17",
                     };
-                    //return JsonS// policy.ToJson();
+                    return JsonSerializer.Serialize(policy);
                 }),
             }, new CustomResourceOptions
             {
                 Provider = awsApSoutheast2,
-                ImportId = "demo-9cc426a",
             });
 
             // S3 bucket Public Access Block
@@ -219,8 +210,12 @@ namespace demo_newregion
             }, new CustomResourceOptions
             {
                 Provider = awsApSoutheast2,
-                ImportId = "demo-9cc426a",
             });
+
+            return new Dictionary<string, object?>
+            {
+                ["cdnURL"] = Output.Format($"https://{cfDistribution.DomainName}")
+            };
         }
     }
 }
