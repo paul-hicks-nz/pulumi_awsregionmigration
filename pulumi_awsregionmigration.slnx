@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="demo_newregion/demo_newregion.csproj" />
+  <Project Path="demo_staticwebsite/demo_staticwebsite.csproj" />
+</Solution>

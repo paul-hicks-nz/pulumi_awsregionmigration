@@ -1,0 +1,7 @@
+name: demo_newregion
+description: Recreating legacy resources in new region
+runtime: dotnet
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: csharp

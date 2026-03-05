@@ -2,3 +2,6 @@
 
 # IDE0001: Simplify Names
 dotnet_diagnostic.IDE0001.severity = silent
+
+# CA1861: Avoid constant arrays as arguments
+dotnet_diagnostic.CA1861.severity = silent

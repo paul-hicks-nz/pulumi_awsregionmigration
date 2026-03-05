@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Pulumi;
+using Pulumi.Aws.Inputs;
 using Aws = Pulumi.Aws;
-// using SyncedFolder = Pulumi.SyncedFolder;
 
-return await Pulumi.Deployment.RunAsync(() =>
+return await Deployment.RunAsync(() =>
 {
     // Import the program's configuration settings.
     var config = new Config();
@@ -11,26 +11,23 @@ return await Pulumi.Deployment.RunAsync(() =>
     var indexDocument = config.Get("indexDocument") ?? "index.html";
     var errorDocument = config.Get("errorDocument") ?? "error.html";
 
-    var provider = new Aws.Provider("apse2", new Aws.ProviderArgs { Profile = "admin-cms", Region = Aws.Region.APSoutheast2.ToString() });
+    var provider = new Aws.Provider("apse2", new Aws.ProviderArgs
+    {
+        Profile = "admin-cms",
+        Region = Aws.Region.APSoutheast2.ToString(),
+        DefaultTags = new ProviderDefaultTagsArgs
+        {
+            Tags = {
+                ["MigrateTo"] = "ap-southeast-6"
+            }
+        }
+    });
 
     // Create an S3 bucket and configure it as a website.
-    var bucket = new Aws.S3.Bucket("bucket", null, new CustomResourceOptions { Provider = provider });
-
-    var bucketWebsite = new Aws.S3.BucketWebsiteConfiguration("bucket", new()
-    {
-        Bucket = bucket.Id,
-        IndexDocument = new Aws.S3.Inputs.BucketWebsiteConfigurationIndexDocumentArgs
-        {
-            Suffix = indexDocument,
-        },
-        ErrorDocument = new Aws.S3.Inputs.BucketWebsiteConfigurationErrorDocumentArgs
-        {
-            Key = errorDocument,
-        },
-    }, new CustomResourceOptions { Provider = provider });
+    var bucket = new Aws.S3.Bucket("demo", null, new CustomResourceOptions { Provider = provider });
 
     // Configure ownership controls for the new S3 bucket
-    var ownershipControls = new Aws.S3.BucketOwnershipControls("ownership-controls", new()
+    var ownershipControls = new Aws.S3.BucketOwnershipControls("demo", new()
     {
         Bucket = bucket.Id,
         Rule = new Aws.S3.Inputs.BucketOwnershipControlsRuleArgs
@@ -40,45 +37,44 @@ return await Pulumi.Deployment.RunAsync(() =>
     }, new CustomResourceOptions { Provider = provider });
 
     // Configure public access block for the new S3 bucket
-    var publicAccessBlock = new Aws.S3.BucketPublicAccessBlock("public-access-block", new()
+    var publicAccessBlock = new Aws.S3.BucketPublicAccessBlock("demo", new()
     {
         Bucket = bucket.Id,
         BlockPublicAcls = false,
     }, new CustomResourceOptions { Provider = provider });
 
-    new Aws.S3.BucketObject("index.html", new Aws.S3.BucketObjectArgs
+    var @index = new Aws.S3.BucketObject("index.html", new Aws.S3.BucketObjectArgs
     {
         Bucket = bucket.BucketName,
         ContentType = "text/html",
-        Source = new Pulumi.FileAsset($"{path}/{indexDocument}")
+        Source = new FileAsset($"{path}/{indexDocument}")
     }, new CustomResourceOptions { Provider = provider });
-    new Aws.S3.BucketObject("error.html", new Aws.S3.BucketObjectArgs
+    var @error = new Aws.S3.BucketObject("error.html", new Aws.S3.BucketObjectArgs
     {
         Bucket = bucket.BucketName,
         ContentType = "text/html",
-        Source = new Pulumi.FileAsset($"{path}/{errorDocument}")
+        Source = new FileAsset($"{path}/{errorDocument}")
+    }, new CustomResourceOptions { Provider = provider });
+
+    var oac = new Aws.CloudFront.OriginAccessControl("demo", new()
+    {
+        OriginAccessControlOriginType = "s3",
+        SigningBehavior = "always",
+        SigningProtocol = "sigv4"
     }, new CustomResourceOptions { Provider = provider });
 
     // Create a CloudFront CDN to distribute and cache the website.
-    var cdn = new Aws.CloudFront.Distribution("cdn", new()
+    var cdn = new Aws.CloudFront.Distribution("demo", new()
     {
         Enabled = true,
+        DefaultRootObject = "index.html",
         Origins = new[]
         {
             new Aws.CloudFront.Inputs.DistributionOriginArgs
             {
                 OriginId = bucket.Arn,
-                DomainName = bucketWebsite.WebsiteEndpoint,
-                CustomOriginConfig = new Aws.CloudFront.Inputs.DistributionOriginCustomOriginConfigArgs
-                {
-                    OriginProtocolPolicy = "http-only",
-                    HttpPort = 80,
-                    HttpsPort = 443,
-                    OriginSslProtocols = new[]
-                    {
-                        "TLSv1.2",
-                    },
-                },
+                DomainName = bucket.BucketRegionalDomainName,
+                OriginAccessControlId = oac.Id
             },
         },
         DefaultCacheBehavior = new Aws.CloudFront.Inputs.DistributionDefaultCacheBehaviorArgs
@@ -123,7 +119,8 @@ return await Pulumi.Deployment.RunAsync(() =>
         {
             GeoRestriction = new Aws.CloudFront.Inputs.DistributionRestrictionsGeoRestrictionArgs
             {
-                RestrictionType = "none",
+                RestrictionType = "whitelist",
+                Locations = new[] { "NZ" }
             },
         },
         ViewerCertificate = new Aws.CloudFront.Inputs.DistributionViewerCertificateArgs
@@ -132,10 +129,13 @@ return await Pulumi.Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions { Provider = provider });
 
-    var policy = Output.JsonSerialize(Output.Create(new
+    var @policy = new Aws.S3.BucketPolicy("public", new Aws.S3.BucketPolicyArgs
     {
-        Version = Aws.Iam.PolicyDocumentVersion.PolicyDocumentVersion_2012_10_17.ToString(),
-        Statement = new[] {
+        Bucket = bucket.Id,
+        Policy = Output.JsonSerialize(Output.Create(new
+        {
+            Version = Aws.Iam.PolicyDocumentVersion.PolicyDocumentVersion_2012_10_17.ToString(),
+            Statement = new[] {
             new {
                 Sid = "PublicReadGetObject",
                 Effect = Aws.Iam.PolicyStatementEffect.ALLOW.ToString(),
@@ -144,31 +144,22 @@ return await Pulumi.Deployment.RunAsync(() =>
                     Service = "cloudfront.amazonaws.com"
                 },
                 Action = "s3:GetObject",
-                Resource = Output.Format($"arn:aws:s3:::{bucket.BucketName}/*"),
+                Resource = Output.Format($"{bucket.Arn}/*"),
                 Condition = new
                 {
                     StringEquals = new Dictionary<string, Output<string>>
                     {
-                        ["AWS:SourceArn"] = Output.Format($"arn:aws:cloudfront::155742740775:distribution/{cdn.Id}")
+                        ["AWS:SourceArn"] = cdn.Arn
                     }
                 }
             }
         }
-    }));
-
-    new Aws.S3.BucketPolicy("public", new Aws.S3.BucketPolicyArgs
-    {
-        Bucket = bucket.Id,
-        Policy = policy
+        }))
     }, new CustomResourceOptions { Provider = provider });
 
     // Export the URLs and hostnames of the bucket and distribution.
     return new Dictionary<string, object?>
     {
-        ["originURL"] = Output.Format($"http://{bucketWebsite.WebsiteEndpoint}"),
-        ["originHostname"] = bucket.WebsiteEndpoint,
-        ["cdnURL"] = Output.Format($"https://{cdn.DomainName}"),
-        ["cdnHostname"] = cdn.DomainName,
-        ["policy"] = policy
+        ["cdnURL"] = Output.Format($"https://{cdn.DomainName}")
     };
 });
