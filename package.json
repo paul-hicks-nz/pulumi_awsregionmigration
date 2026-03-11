@@ -1,0 +1,11 @@
+{
+  "name": "sentify-preso",
+  "version": "1.0.0",
+  "description": "Presentation for AWS region migration",
+  "scripts": {
+    "presentation": "npx @marp-team/marp-cli --server ./preso"
+  },
+  "devDependencies": {
+    "@marp-team/marp-cli": "latest"
+  }
+}
