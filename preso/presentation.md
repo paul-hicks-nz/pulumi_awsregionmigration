@@ -157,6 +157,13 @@ The AI-to-search syntax translation is not documented and is so finnicky
 - Oh well, no AI here. Use the vanilla aws-csharp template and replace the Program.cs with the generated code
 ---
 
+# The First Win for AI - Learning C# With Neo
+
+---
+
+# The Second Win for AI - Learning GitHub Workflows with Neo
+
+---
 
 ```ts
 import * as aws from "@pulumi/pulumi-aws";
