@@ -33,7 +33,6 @@ Puluminary
 Former AI Sceptic
 
 ---
-
 # My Learning Goals
 - Use Pulumi's new AI, Neo
   - Don't break any of our clients' production environments
@@ -64,7 +63,6 @@ Show of hands: I can add in a few extra hints, tips and demos about the Pulumi f
 
 
 ---
-
 # Technical Intro
 - I have configured OIDC in Pulumi ESC for AWS
   - All connection from Pulumi to AWS use short-term credentials
@@ -74,7 +72,6 @@ Show of hands: I can add in a few extra hints, tips and demos about the Pulumi f
   - Enables Pulumi Neo to read and review code, and create PRs for changes it suggests (or makes)
 
 ---
-
 # Discovering Unmanaged Resources
 <!--
 Pulumi Insights is a subscription-only feature that scans an "Account" to find cloud resources, both managed and unmanaged.
@@ -90,7 +87,6 @@ and follow the wizard.
 - All the discovered resources are listed at "Resources" in the left bar
 
 ---
-
 # Finding the Resources to Manage
 
 ![bg left:27% w:300](assets/Resources-ListTooBig.png)
@@ -129,25 +125,16 @@ The AI-to-search syntax translation is not documented and is so finnicky
 <sub>In the end I went with `category is network or (category is storage and stack is ap-southeast-2)`, fixed the query in Pulumi Search Syntax, and used my domain knowledge to pick the correct six resourcs.</sub>
 
 ---
-# Generating the Code
-- This is achieved using existing Pulumi rules, so it's not AI (but it is very smart)
-- Some AWS resources map to multiple Pulumi resources, and sometime the opposite is true - so review the generated code!
-- The code generation smarts don't get updated as often as the providers!
-  - I want to use the current AWS provider v7
-  - But the code generated is v6 (but don't worry, AI will save us!)
+# Generating and Enhancing the Code
+- Generation is done using existing Pulumi rules, so it's not AI (but it is very smart)
+- Lots of compile errors and non-best-practices, but AI will save us!
+- Resources in the code and in the cloud aren't always 1:1
+- The "Enhance" button is a general-purpose refactorer with some Pulumi- and cloud provider-specific knowledge
+- It is non-deterministic and can be improved by running it on its own output
+- Fun fact - it will quite happily accept and refactor any code you paste into it
 - Sometimes there's more than one way to do things
   - (And somehow the code generation never wants to it my way)
 
----
-# The Mystery AI "Enhance" Button
-- It is a general-purpose refactorer
-  - Extracts and de-duplicates literal and constrant structs to named variables
-  - Improves formatting including indentation
-  - Adds basic comments, including TODOs for improvements it doesn't have the information to complete
-  - Fun fact - it will quite happily accept and refactor any code you paste into it
-- It has Pulumi- and cloud provider-specific knowledge too
-  - Mostly improves the quality of generated comments
-- It is non-deterministic and can be improved by running it on its own output
 ---
 # The Second Knowledge Gap - Where Do I Run This?
 - You have to install Pulumi IaC and create a new Pulumi project.. but wait!
@@ -157,13 +144,19 @@ The AI-to-search syntax translation is not documented and is so finnicky
     - It uses net6, which is out of support and produces warnings
     - It depends on System.Collections.Generic, which is not in nuget
 - Oh well, no AI here. Use the vanilla aws-csharp template and replace the Program.cs with the generated code
----
 
+---
 # The First Win for AI - Learning C# With Neo
+- With some general language knowledge, it's easy to craft code-improvement prompts
+- It's easy to run `pulumi preview` to see the effects
+- These produce nice PRs in GitHub
+- Once it compiles, they even produce Pulumi previews!
 
 ---
-
 # The Second Win for AI - Learning GitHub Workflows with Neo
+- Pipelines can be built for us
+- All our changes now update the preview
+- Don't have to syntax change anything - Neo will do that for us
 
 ---
 
