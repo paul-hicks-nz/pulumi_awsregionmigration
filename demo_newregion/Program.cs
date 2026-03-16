@@ -14,11 +14,6 @@ return await Deployment.RunAsync(() =>
         Region = "ap-southeast-2",
     });
 
-    var awsGlobal = new Aws.Provider("aws_sentify_demo_global", new()
-    {
-        Region = "global",
-    });
-
     // Shared tags
     var migrateToTag = "ap-southeast-6";
 
@@ -51,7 +46,7 @@ return await Deployment.RunAsync(() =>
     var s3BucketPublicAccessBlock = new Aws.S3.BucketPublicAccessBlock("demo-9cc426a", new()
     {
         // Use the bucket's name output instead of a literal
-        Bucket = s3Bucket.Bucket,
+        Bucket = s3Bucket.BucketName,
     }, new CustomResourceOptions
     {
         Provider = awsApSoutheast2,
@@ -61,7 +56,7 @@ return await Deployment.RunAsync(() =>
     // Ownership Controls for S3 Bucket (imported)
     var s3BucketOwnershipControls = new Aws.S3.BucketOwnershipControls("demo-9cc426a_3", new()
     {
-        Bucket = s3Bucket.Bucket,
+        Bucket = s3Bucket.BucketName,
         Rule = new Aws.S3.Inputs.BucketOwnershipControlsRuleArgs
         {
             ObjectOwnership = "BucketOwnerEnforced",
@@ -81,15 +76,15 @@ return await Deployment.RunAsync(() =>
         SigningProtocol = "sigv4",
     }, new CustomResourceOptions
     {
-        Provider = awsGlobal,
+        Provider = awsApSoutheast2,
         ImportId = "E2OS23KWF95585",
     });
 
     // Derived/common outputs for use in CloudFront and policy
     var s3BucketArn = s3Bucket.Arn;
-    var s3BucketName = s3Bucket.Bucket;
+    var s3BucketName = s3Bucket.BucketName;
     var s3OriginId = s3BucketArn; // TargetOriginId/OriginId is an arbitrary string; preserve original ARN-like string
-    var s3RegionalDomainName = s3Bucket.RegionalDomainName;
+    var s3RegionalDomainName = s3Bucket.BucketRegionalDomainName;
 
     // CloudFront Distribution (imported)
     var cfDistribution = new Aws.CloudFront.Distribution("E1RNY9HPGY8YPZ", new()
@@ -170,7 +165,7 @@ return await Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions
     {
-        Provider = awsGlobal,
+        Provider = awsApSoutheast2,
         ImportId = "E1RNY9HPGY8YPZ",
     });
 
