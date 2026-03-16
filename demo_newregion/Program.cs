@@ -1,37 +1,31 @@
 using System.Collections.Generic;
 using System.Linq;
 using Pulumi;
-using Pulumi.Serialization;
 using Aws = Pulumi.Aws;
 
-/*
-Refactored Pulumi program creating an S3 bucket with policy/controls and a CloudFront distribution/OAC.
-Improvements: replaced hardcoded intra-stack identifiers with typed references, clarified names, added comments, and deduplicated literals.
-*/
+// This program provisions an S3 bucket with access controls and a CloudFront distribution.
+// Improvements: replaced hardcoded resource identifiers with typed references, clarified names, added comments, and minor formatting.
 
 return await Deployment.RunAsync(() =>
 {
-    // Shared literals
-    const string migrateToRegionTag = "ap-southeast-6";
-    const string bucketName = "demo-9cc426a";
-    const string defaultRoot = "index.html";
-    const int defaultTtl = 600;
-
-    // AWS providers
-    var aws_sentify_demo_global = new Aws.Provider("aws_sentify_demo_global", new()
-    {
-        Region = "global",
-    });
-
-    var aws_sentify_demo_ap_southeast_2 = new Aws.Provider("aws_sentify_demo_ap-southeast-2", new()
+    // Providers
+    var awsApSoutheast2 = new Aws.Provider("aws_sentify_demo_ap-southeast-2", new()
     {
         Region = "ap-southeast-2",
     });
 
-    // S3 bucket for website content
-    var bucket = new Aws.S3.Bucket("demo-9cc426a", new()
+    var awsGlobal = new Aws.Provider("aws_sentify_demo_global", new()
     {
-        BucketName = bucketName,
+        Region = "global",
+    });
+
+    // Shared tags
+    var migrateToTag = "ap-southeast-6";
+
+    // S3 Bucket (imported)
+    var s3Bucket = new Aws.S3.Bucket("demo-9cc426a_1", new()
+    {
+        BucketName = "demo-9cc426a",
         RequestPayer = "BucketOwner",
         ServerSideEncryptionConfiguration = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationArgs
         {
@@ -45,26 +39,41 @@ return await Deployment.RunAsync(() =>
         },
         Tags =
         {
-            { "MigrateTo", migrateToRegionTag },
+            { "MigrateTo", migrateToTag },
         },
     }, new CustomResourceOptions
     {
-        Provider = aws_sentify_demo_ap_southeast_2,
+        Provider = awsApSoutheast2,
         ImportId = "demo-9cc426a",
     });
 
-    // S3 public access block
-    var bucketPublicAccessBlock = new Aws.S3.BucketPublicAccessBlock("demo-9cc426a_1", new()
+    // Public Access Block for S3 Bucket (imported)
+    var s3BucketPublicAccessBlock = new Aws.S3.BucketPublicAccessBlock("demo-9cc426a", new()
     {
-        Bucket = bucket.Id, // was "demo-9cc426a"
+        // Use the bucket's name output instead of a literal
+        Bucket = s3Bucket.Bucket,
     }, new CustomResourceOptions
     {
-        Provider = aws_sentify_demo_ap_southeast_2,
+        Provider = awsApSoutheast2,
         ImportId = "demo-9cc426a",
     });
 
-    // CloudFront Origin Access Control
-    var originAccessControl = new Aws.CloudFront.OriginAccessControl("E2OS23KWF95585", new()
+    // Ownership Controls for S3 Bucket (imported)
+    var s3BucketOwnershipControls = new Aws.S3.BucketOwnershipControls("demo-9cc426a_3", new()
+    {
+        Bucket = s3Bucket.Bucket,
+        Rule = new Aws.S3.Inputs.BucketOwnershipControlsRuleArgs
+        {
+            ObjectOwnership = "BucketOwnerEnforced",
+        },
+    }, new CustomResourceOptions
+    {
+        Provider = awsApSoutheast2,
+        ImportId = "demo-9cc426a",
+    });
+
+    // CloudFront Origin Access Control (imported)
+    var cfOriginAccessControl = new Aws.CloudFront.OriginAccessControl("E2OS23KWF95585", new()
     {
         Name = "demo-e10cc0e",
         OriginAccessControlOriginType = "s3",
@@ -72,12 +81,18 @@ return await Deployment.RunAsync(() =>
         SigningProtocol = "sigv4",
     }, new CustomResourceOptions
     {
-        Provider = aws_sentify_demo_global,
+        Provider = awsGlobal,
         ImportId = "E2OS23KWF95585",
     });
 
-    // CloudFront distribution serving the S3 bucket
-    var distribution = new Aws.CloudFront.Distribution("E1RNY9HPGY8YPZ", new()
+    // Derived/common outputs for use in CloudFront and policy
+    var s3BucketArn = s3Bucket.Arn;
+    var s3BucketName = s3Bucket.Bucket;
+    var s3OriginId = s3BucketArn; // TargetOriginId/OriginId is an arbitrary string; preserve original ARN-like string
+    var s3RegionalDomainName = s3Bucket.RegionalDomainName;
+
+    // CloudFront Distribution (imported)
+    var cfDistribution = new Aws.CloudFront.Distribution("E1RNY9HPGY8YPZ", new()
     {
         CustomErrorResponses = new[]
         {
@@ -102,7 +117,7 @@ return await Deployment.RunAsync(() =>
                 "HEAD",
                 "OPTIONS",
             },
-            DefaultTtl = defaultTtl,
+            DefaultTtl = 600,
             ForwardedValues = new Aws.CloudFront.Inputs.DistributionDefaultCacheBehaviorForwardedValuesArgs
             {
                 Cookies = new Aws.CloudFront.Inputs.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs
@@ -111,24 +126,25 @@ return await Deployment.RunAsync(() =>
                 },
                 QueryString = true,
             },
-            MaxTtl = defaultTtl,
-            MinTtl = defaultTtl,
-            // Use S3 bucket ARN for TargetOriginId to match the original literal form
-            TargetOriginId = bucket.Arn,
+            MaxTtl = 600,
+            MinTtl = 600,
+            // Use the same string value pattern as original: an ARN-like string for OriginId/TargetOriginId
+            TargetOriginId = s3OriginId,
             ViewerProtocolPolicy = "redirect-to-https",
         },
-        DefaultRootObject = defaultRoot,
+        DefaultRootObject = "index.html",
         Enabled = true,
         HttpVersion = "http2",
         Origins = new[]
         {
             new Aws.CloudFront.Inputs.DistributionOriginArgs
             {
-                // Use the bucket's regional domain name
-                DomainName = bucket.RegionalDomainName,
-                OriginAccessControlId = originAccessControl.Id, // was "E2OS23KWF95585"
-                // Keep origin id consistent with DefaultCacheBehavior.TargetOriginId
-                OriginId = bucket.Arn, // was "arn:aws:s3:::demo-9cc426a"
+                // Use the bucket's regional domain name instead of hard-coded domain
+                DomainName = s3RegionalDomainName,
+                // Reference the created Origin Access Control's ID
+                OriginAccessControlId = cfOriginAccessControl.Id,
+                // Keep the same origin ID string (matches TargetOriginId)
+                OriginId = s3OriginId,
             },
         },
         PriceClass = "PriceClass_100",
@@ -145,7 +161,7 @@ return await Deployment.RunAsync(() =>
         },
         Tags =
         {
-            { "MigrateTo", migrateToRegionTag },
+            { "MigrateTo", migrateToTag },
         },
         ViewerCertificate = new Aws.CloudFront.Inputs.DistributionViewerCertificateArgs
         {
@@ -154,63 +170,42 @@ return await Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions
     {
-        Provider = aws_sentify_demo_global,
+        Provider = awsGlobal,
         ImportId = "E1RNY9HPGY8YPZ",
     });
 
-    // S3 bucket policy allowing CloudFront to GetObject from the bucket
-    var bucketPolicy = new Aws.S3.BucketPolicy("demo-9cc426a_2", new()
+    // S3 Bucket Policy (imported), referencing the CloudFront distribution and S3 bucket via outputs
+    var s3BucketPolicy = new Aws.S3.BucketPolicy("demo-9cc426a_2", new()
     {
-        Bucket = bucket.Id, // was "demo-9cc426a"
-        Policy = Output.Tuple(bucket.Arn, distribution.Arn).Apply(items =>
+        Bucket = s3BucketName,
+        Policy = Output.Tuple(cfDistribution.Arn, s3BucketArn).Apply(items =>
         {
-            var (bArn, distArn) = items;
-            // Construct policy JSON with referenced ARNs
-            var policy = new Dictionary<string, object?>
-            {
-                ["Version"] = "2012-10-17",
-                ["Statement"] = new[]
-                {
-                    new Dictionary<string, object?>
-                    {
-                        ["Sid"] = "PublicReadGetObject",
-                        ["Effect"] = "Allow",
-                        ["Principal"] = new Dictionary<string, object?>
-                        {
-                            ["Service"] = "cloudfront.amazonaws.com",
-                        },
-                        ["Action"] = "s3:GetObject",
-                        ["Resource"] = $"{bArn}/*",
-                        ["Condition"] = new Dictionary<string, object?>
-                        {
-                            ["StringEquals"] = new Dictionary<string, object?>
-                            {
-                                // Preserve original SourceArn semantics with the distribution ARN
-                                ["AWS:SourceArn"] = distArn,
-                            },
-                        },
-                    },
-                },
-            };
-            return policy;
-        }).Apply(p => System.Text.Json.JsonSerializer.Serialize(p)),
+            var distArn = items.Item1;
+            var bucketArn = items.Item2;
+            // Maintain exact semantics while replacing literals with references
+            return $@"{{
+  ""Statement"": [
+    {{
+      ""Action"": ""s3:GetObject"",
+      ""Condition"": {{
+        ""StringEquals"": {{
+          ""AWS:SourceArn"": ""{distArn}""
+        }}
+      }},
+      ""Effect"": ""Allow"",
+      ""Principal"": {{
+        ""Service"": ""cloudfront.amazonaws.com""
+      }},
+      ""Resource"": ""{bucketArn}/*"",
+      ""Sid"": ""PublicReadGetObject""
+    }}
+  ],
+  ""Version"": ""2012-10-17""
+}}";
+        }),
     }, new CustomResourceOptions
     {
-        Provider = aws_sentify_demo_ap_southeast_2,
-        ImportId = "demo-9cc426a",
-    });
-
-    // S3 ownership controls
-    var bucketOwnershipControls = new Aws.S3.BucketOwnershipControls("demo-9cc426a_3", new()
-    {
-        Bucket = bucket.Id, // was "demo-9cc426a"
-        Rule = new Aws.S3.Inputs.BucketOwnershipControlsRuleArgs
-        {
-            ObjectOwnership = "BucketOwnerEnforced",
-        },
-    }, new CustomResourceOptions
-    {
-        Provider = aws_sentify_demo_ap_southeast_2,
+        Provider = awsApSoutheast2,
         ImportId = "demo-9cc426a",
     });
 });

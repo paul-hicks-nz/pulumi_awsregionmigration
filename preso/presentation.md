@@ -113,8 +113,8 @@ and follow the wizard.
   section table {
     display: table;
     width: 100%;
-    table-layout: fixed;
-    word-wrap: true;
+    /* table-layout: fixed; */
+    /* word-wrap: true; */
   }
 </style>
 
@@ -123,8 +123,10 @@ The AI-to-search syntax translation is not documented and is so finnicky
 | Works | Doesn't Work |
 | --- | --- |
 | `category storage` | `storage` |
-| `module = cloudfront` | `module cloudfront` <br> (which is the same as `cloudfront`) |
-| `(category is network) (category is storage)` | `category network or category storage` <br> `network or storage category` <br> `anything in network or storage` |
+| `module = cloudfront` | `module cloudfront` _(&#x2261; `cloudfront`)_ |
+| _Nothing_ | `(category is network) OR (category is storage)` <br> `category network or category storage` <br> `anything in network or storage` |
+
+<sub>In the end I went with `category is network or (category is storage and stack is ap-southeast-2)`, fixed the query in Pulumi Search Syntax, and used my domain knowledge to pick the correct six resourcs.</sub>
 
 ---
 # Generating the Code
