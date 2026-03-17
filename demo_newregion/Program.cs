@@ -3,21 +3,24 @@ using Pulumi;
 using Aws = Pulumi.Aws;
 
 // This program provisions an S3 bucket with access controls and a CloudFront distribution.
-// Improvements: replaced hardcoded resource identifiers with typed references, clarified names, added comments, and minor formatting.
 
 return await Deployment.RunAsync(() =>
 {
-    // Providers
-    var awsApSoutheast2 = new Aws.Provider("aws_sentify_demo_ap-southeast-2", new()
+    var config = new Config("aws");
+    var region = config.Require("region");
+    var name = "demo";
+
+    // Provider
+    var awsProvider = new Aws.Provider(name, new()
     {
-        Region = "ap-southeast-2",
+        Region = region,
     });
 
     // Shared tags
     var migrateToTag = "ap-southeast-6";
 
     // S3 Bucket with public access block and ownership controls
-    var s3Bucket = new demo_newregion.SecureBucket("demo-9cc426a", new()
+    var s3Bucket = new demo_newregion.SecureBucket(name, new()
     {
         Tags =
         {
@@ -25,19 +28,18 @@ return await Deployment.RunAsync(() =>
         },
     }, new ComponentResourceOptions
     {
-        Provider = awsApSoutheast2,
+        Provider = awsProvider,
     });
 
-    // CloudFront Origin Access Control (imported)
-    var cfOriginAccessControl = new Aws.CloudFront.OriginAccessControl("E2OS23KWF95585", new()
+    // CloudFront Origin Access Control
+    var cfOriginAccessControl = new Aws.CloudFront.OriginAccessControl(name, new()
     {
         OriginAccessControlOriginType = "s3",
         SigningBehavior = "always",
         SigningProtocol = "sigv4",
     }, new CustomResourceOptions
     {
-        Provider = awsApSoutheast2,
-        ImportId = "E2OS23KWF95585",
+        Provider = awsProvider,
     });
 
     // Derived/common outputs for use in CloudFront and policy
@@ -46,8 +48,8 @@ return await Deployment.RunAsync(() =>
     var s3OriginId = s3BucketArn; // TargetOriginId/OriginId is an arbitrary string; preserve original ARN-like string
     var s3RegionalDomainName = s3Bucket.BucketRegionalDomainName;
 
-    // CloudFront Distribution (imported)
-    var cfDistribution = new Aws.CloudFront.Distribution("E1RNY9HPGY8YPZ", new()
+    // CloudFront Distribution
+    var cfDistribution = new Aws.CloudFront.Distribution(name, new()
     {
         CustomErrorResponses = new[]
         {
@@ -83,7 +85,6 @@ return await Deployment.RunAsync(() =>
             },
             MaxTtl = 600,
             MinTtl = 600,
-            // Use the same string value pattern as original: an ARN-like string for OriginId/TargetOriginId
             TargetOriginId = s3OriginId,
             ViewerProtocolPolicy = "redirect-to-https",
         },
@@ -93,11 +94,8 @@ return await Deployment.RunAsync(() =>
         {
             new Aws.CloudFront.Inputs.DistributionOriginArgs
             {
-                // Use the bucket's regional domain name instead of hard-coded domain
                 DomainName = s3RegionalDomainName,
-                // Reference the created Origin Access Control's ID
                 OriginAccessControlId = cfOriginAccessControl.Id,
-                // Keep the same origin ID string (matches TargetOriginId)
                 OriginId = s3OriginId,
             },
         },
@@ -124,19 +122,17 @@ return await Deployment.RunAsync(() =>
         },
     }, new CustomResourceOptions
     {
-        Provider = awsApSoutheast2,
-        ImportId = "E1RNY9HPGY8YPZ",
+        Provider = awsProvider,
     });
 
-    // S3 Bucket Policy (imported), referencing the CloudFront distribution and S3 bucket via outputs
-    var s3BucketPolicy = new Aws.S3.BucketPolicy("demo-9cc426a_2", new()
+    // S3 Bucket Policy
+    var s3BucketPolicy = new Aws.S3.BucketPolicy(name, new()
     {
         Bucket = s3BucketName,
         Policy = Output.Tuple(cfDistribution.Arn, s3BucketArn).Apply(items =>
         {
             var distArn = items.Item1;
             var bucketArn = items.Item2;
-            // Maintain exact semantics while replacing literals with references
             return $@"{{
   ""Statement"": [
     {{
@@ -159,8 +155,7 @@ return await Deployment.RunAsync(() =>
         }),
     }, new CustomResourceOptions
     {
-        Provider = awsApSoutheast2,
-        ImportId = "demo-9cc426a",
+        Provider = awsProvider,
     });
 
     // Stack exports

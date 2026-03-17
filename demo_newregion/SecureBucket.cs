@@ -35,19 +35,19 @@ public class SecureBucket : ComponentResource
         : base("demo:index:SecureBucket", name, opts)
     {
         // S3 Bucket
-        var bucket = new Aws.S3.Bucket($"{name}-bucket", new()
+        var bucket = new Aws.S3.Bucket(name, new()
         {
             Tags = args.Tags,
         }, new CustomResourceOptions { Parent = this });
 
         // Block all public access
-        var publicAccessBlock = new Aws.S3.BucketPublicAccessBlock($"{name}-pab", new()
+        var publicAccessBlock = new Aws.S3.BucketPublicAccessBlock(name, new()
         {
             Bucket = bucket.BucketName,
         }, new CustomResourceOptions { Parent = this });
 
         // Enforce bucket-owner ownership
-        var ownershipControls = new Aws.S3.BucketOwnershipControls($"{name}-ownership", new()
+        var ownershipControls = new Aws.S3.BucketOwnershipControls(name, new()
         {
             Bucket = bucket.BucketName,
             Rule = new Aws.S3.Inputs.BucketOwnershipControlsRuleArgs
