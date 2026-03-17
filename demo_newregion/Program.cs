@@ -19,8 +19,6 @@ return await Deployment.RunAsync(() =>
     // S3 Bucket with public access block and ownership controls
     var s3Bucket = new demo_newregion.SecureBucket("demo-9cc426a", new()
     {
-        BucketName = "demo-9cc426a",
-        RequestPayer = "BucketOwner",
         Tags =
         {
             { "MigrateTo", migrateToTag },
@@ -33,7 +31,6 @@ return await Deployment.RunAsync(() =>
     // CloudFront Origin Access Control (imported)
     var cfOriginAccessControl = new Aws.CloudFront.OriginAccessControl("E2OS23KWF95585", new()
     {
-        Name = "demo-e10cc0e",
         OriginAccessControlOriginType = "s3",
         SigningBehavior = "always",
         SigningProtocol = "sigv4",
@@ -92,7 +89,6 @@ return await Deployment.RunAsync(() =>
         },
         DefaultRootObject = "index.html",
         Enabled = true,
-        HttpVersion = "http2",
         Origins = new[]
         {
             new Aws.CloudFront.Inputs.DistributionOriginArgs

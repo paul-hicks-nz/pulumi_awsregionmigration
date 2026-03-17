@@ -10,24 +10,6 @@ namespace demo_newregion;
 public sealed class SecureBucketArgs : ResourceArgs
 {
     /// <summary>
-    /// Optional explicit bucket name. If omitted, Pulumi auto-names the bucket.
-    /// </summary>
-    [Input("bucketName")]
-    public Input<string>? BucketName { get; set; }
-
-    /// <summary>
-    /// Who pays for requests. Defaults to "BucketOwner".
-    /// </summary>
-    [Input("requestPayer")]
-    public Input<string>? RequestPayer { get; set; }
-
-    /// <summary>
-    /// Server-side encryption algorithm. Defaults to "AES256".
-    /// </summary>
-    [Input("sseAlgorithm")]
-    public Input<string>? SseAlgorithm { get; set; }
-
-    /// <summary>
     /// Tags to apply to the bucket.
     /// </summary>
     [Input("tags")]
@@ -52,23 +34,9 @@ public class SecureBucket : ComponentResource
     public SecureBucket(string name, SecureBucketArgs args, ComponentResourceOptions? opts = null)
         : base("demo:index:SecureBucket", name, opts)
     {
-        var sseAlgorithm = args.SseAlgorithm ?? "AES256";
-
         // S3 Bucket
         var bucket = new Aws.S3.Bucket($"{name}-bucket", new()
         {
-            BucketName = args.BucketName,
-            RequestPayer = args.RequestPayer,
-            ServerSideEncryptionConfiguration = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationArgs
-            {
-                Rule = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationRuleArgs
-                {
-                    ApplyServerSideEncryptionByDefault = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefaultArgs
-                    {
-                        SseAlgorithm = sseAlgorithm,
-                    },
-                },
-            },
             Tags = args.Tags,
         }, new CustomResourceOptions { Parent = this });
 
