@@ -203,4 +203,11 @@ return await Deployment.RunAsync(() =>
         Provider = awsApSoutheast2,
         ImportId = "demo-9cc426a",
     });
+
+    // Stack exports
+    return new Dictionary<string, object?>
+    {
+        ["websiteUrl"] = Output.Format($"https://{cfDistribution.DomainName}"),
+        ["bucketName"] = s3BucketName,
+    };
 });
