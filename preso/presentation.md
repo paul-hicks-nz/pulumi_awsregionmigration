@@ -147,16 +147,21 @@ The AI-to-search syntax translation is not documented and is so finnicky
 
 ---
 # The First Win for AI - Learning C# With Neo
-- With some general language knowledge, it's easy to craft code-improvement prompts
-- It's easy to run `pulumi preview` to see the effects
-- These produce nice PRs in GitHub
-- Once it compiles, they even produce Pulumi previews!
+- Code-improvement prompts are as easy as "Fix the compile errors"
+- And with some Pulumi knowledge, you might try
+  - "Add exports for the website URL and bucket name"
+  - "Refactor the bucket, the public access block and the ownership controls into a single component resource"
+  - "Remove all the importIds so that new resources are created"
+  - "Don't set resource names and don't set properties to their default values"
+- These produce nice PRs in GitHub, and excellent rationale in the Neo conversation
 
 ---
 # The Second Win for AI - Learning GitHub Workflows with Neo
-- Pipelines can be built for us
-- All our changes now update the preview
-- Don't have to syntax change anything - Neo will do that for us
+- Pipelines can be built for us:
+  - "GitHub says there are no checks, can you add the most sensible ones?"
+  - "Can the workflow get short-lived  AWS credentials via the Pulumi GitHub Integration, or via Pulumi ESC?"
+- Don't have to learn any new syntax - Neo will do that for us
+  - Check out "Can you set up a manually triggered workflow that will run `pulumi preview` then, if that is successful, offer a manual step to also run `pulumi up`?". Neo's suggestion is great, and GitHub-idiomatic.
 
 ---
 
