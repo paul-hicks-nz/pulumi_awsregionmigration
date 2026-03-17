@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
@@ -17,54 +16,18 @@ return await Deployment.RunAsync(() =>
     // Shared tags
     var migrateToTag = "ap-southeast-6";
 
-    // S3 Bucket (imported)
-    var s3Bucket = new Aws.S3.Bucket("demo-9cc426a_1", new()
+    // S3 Bucket with public access block and ownership controls
+    var s3Bucket = new demo_newregion.SecureBucket("demo-9cc426a", new()
     {
         BucketName = "demo-9cc426a",
         RequestPayer = "BucketOwner",
-        ServerSideEncryptionConfiguration = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationArgs
-        {
-            Rule = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationRuleArgs
-            {
-                ApplyServerSideEncryptionByDefault = new Aws.S3.Inputs.BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefaultArgs
-                {
-                    SseAlgorithm = "AES256",
-                },
-            },
-        },
         Tags =
         {
             { "MigrateTo", migrateToTag },
         },
-    }, new CustomResourceOptions
+    }, new ComponentResourceOptions
     {
         Provider = awsApSoutheast2,
-        ImportId = "demo-9cc426a",
-    });
-
-    // Public Access Block for S3 Bucket (imported)
-    var s3BucketPublicAccessBlock = new Aws.S3.BucketPublicAccessBlock("demo-9cc426a", new()
-    {
-        // Use the bucket's name output instead of a literal
-        Bucket = s3Bucket.BucketName,
-    }, new CustomResourceOptions
-    {
-        Provider = awsApSoutheast2,
-        ImportId = "demo-9cc426a",
-    });
-
-    // Ownership Controls for S3 Bucket (imported)
-    var s3BucketOwnershipControls = new Aws.S3.BucketOwnershipControls("demo-9cc426a_3", new()
-    {
-        Bucket = s3Bucket.BucketName,
-        Rule = new Aws.S3.Inputs.BucketOwnershipControlsRuleArgs
-        {
-            ObjectOwnership = "BucketOwnerEnforced",
-        },
-    }, new CustomResourceOptions
-    {
-        Provider = awsApSoutheast2,
-        ImportId = "demo-9cc426a",
     });
 
     // CloudFront Origin Access Control (imported)
