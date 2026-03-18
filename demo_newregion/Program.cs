@@ -125,6 +125,27 @@ return await Deployment.RunAsync(() =>
         Provider = awsProvider,
     });
 
+    // Upload website files to the S3 bucket
+    var indexHtml = new Aws.S3.BucketObject("index.html", new()
+    {
+        Bucket = s3BucketName,
+        ContentType = "text/html",
+        Source = new FileAsset("./www/index.html"),
+    }, new CustomResourceOptions
+    {
+        Provider = awsProvider,
+    });
+
+    var errorHtml = new Aws.S3.BucketObject("error.html", new()
+    {
+        Bucket = s3BucketName,
+        ContentType = "text/html",
+        Source = new FileAsset("./www/error.html"),
+    }, new CustomResourceOptions
+    {
+        Provider = awsProvider,
+    });
+
     // S3 Bucket Policy
     var s3BucketPolicy = new Aws.S3.BucketPolicy(name, new()
     {
