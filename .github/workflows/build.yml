@@ -1,0 +1,51 @@
+name: Build & Preview
+
+on:
+  pull_request:
+    paths:
+      - "demo_newregion/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Build
+        run: dotnet build
+        working-directory: demo_newregion
+
+  preview:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Authenticate with Pulumi Cloud
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: paulhicks_demo
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Inject AWS credentials from ESC
+        uses: pulumi/esc-action@v1
+        with:
+          environment: paulhicks_demo/sentify_demo/demo_apse2
+
+      - uses: pulumi/actions@v6
+        with:
+          command: preview
+          stack-name: paulhicks_demo/dev
+          work-dir: demo_newregion
