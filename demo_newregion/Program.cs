@@ -146,34 +146,45 @@ return await Deployment.RunAsync(() =>
         Provider = awsProvider,
     });
 
-    // S3 Bucket Policy
+    // S3 Bucket Policy — built with a strongly-typed policy document
+    var s3BucketPolicyDocument = Aws.Iam.GetPolicyDocument.Invoke(new()
+    {
+        Statements = new[]
+        {
+            new Aws.Iam.Inputs.GetPolicyDocumentStatementInputArgs
+            {
+                Sid = "PublicReadGetObject",
+                Actions = new[] { "s3:GetObject" },
+                Effect = "Allow",
+                Principals = new[]
+                {
+                    new Aws.Iam.Inputs.GetPolicyDocumentStatementPrincipalInputArgs
+                    {
+                        Type = "Service",
+                        Identifiers = new[] { "cloudfront.amazonaws.com" },
+                    },
+                },
+                Resources = new[]
+                {
+                    s3BucketArn.Apply(arn => $"{arn}/*"),
+                },
+                Conditions = new[]
+                {
+                    new Aws.Iam.Inputs.GetPolicyDocumentStatementConditionInputArgs
+                    {
+                        Test = "StringEquals",
+                        Variable = "AWS:SourceArn",
+                        Values = new[] { cfDistribution.Arn },
+                    },
+                },
+            },
+        },
+    });
+
     var s3BucketPolicy = new Aws.S3.BucketPolicy(name, new()
     {
         Bucket = s3BucketName,
-        Policy = Output.Tuple(cfDistribution.Arn, s3BucketArn).Apply(items =>
-        {
-            var distArn = items.Item1;
-            var bucketArn = items.Item2;
-            return $@"{{
-  ""Statement"": [
-    {{
-      ""Action"": ""s3:GetObject"",
-      ""Condition"": {{
-        ""StringEquals"": {{
-          ""AWS:SourceArn"": ""{distArn}""
-        }}
-      }},
-      ""Effect"": ""Allow"",
-      ""Principal"": {{
-        ""Service"": ""cloudfront.amazonaws.com""
-      }},
-      ""Resource"": ""{bucketArn}/*"",
-      ""Sid"": ""PublicReadGetObject""
-    }}
-  ],
-  ""Version"": ""2012-10-17""
-}}";
-        }),
+        Policy = s3BucketPolicyDocument.Apply(doc => doc.Json),
     }, new CustomResourceOptions
     {
         Provider = awsProvider,
