@@ -166,7 +166,7 @@ return await Deployment.RunAsync(() =>
                 },
                 Resources = new[]
                 {
-                    s3BucketArn.Apply(arn => $"{arn}/*"),
+                    Output.Format($"{s3BucketArn}/*"),
                 },
                 Conditions = new[]
                 {
