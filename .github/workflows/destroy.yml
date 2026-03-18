@@ -1,0 +1,40 @@
+name: Destroy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Build
+        run: dotnet build
+        working-directory: demo_newregion
+
+      - name: Authenticate with Pulumi Cloud
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: paulhicks_demo
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Inject AWS credentials from ESC
+        uses: pulumi/esc-action@v1
+        with:
+          environment: paulhicks_demo/sentify_demo/demo_apse2
+
+      - uses: pulumi/actions@v6
+        with:
+          command: destroy
+          stack-name: paulhicks_demo/dev
+          work-dir: demo_newregion
